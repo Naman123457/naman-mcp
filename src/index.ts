@@ -1287,6 +1287,454 @@ server.tool(
   }
 );
 // --------------------------------------------------
+// TOOL 25: Get Project Info
+// --------------------------------------------------
+
+server.tool(
+  "get_project_info",
+  "Get information about a Node.js project",
+  {
+    working_directory: z.string(),
+  },
+  async ({ working_directory }) => {
+    try {
+      const packagePath =
+        working_directory + "\\package.json";
+
+      const packageContent = await fs.readFile(
+        packagePath,
+        "utf-8"
+      );
+
+      const pkg = JSON.parse(packageContent);
+
+      const projectInfo = {
+        name: pkg.name || "Unknown",
+        version: pkg.version || "Unknown",
+        description: pkg.description || "",
+        scripts: pkg.scripts || {},
+        dependencies: pkg.dependencies || {},
+        devDependencies: pkg.devDependencies || {},
+      };
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              projectInfo,
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Project info error: ${
+              error instanceof Error
+                ? error.message
+                : String(error)
+            }`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+// --------------------------------------------------
+// TOOL 26: Install Package
+// --------------------------------------------------
+
+server.tool(
+  "install_package",
+  "Install an npm package",
+  {
+    working_directory: z.string(),
+    package_name: z.string(),
+    dev: z.boolean().optional(),
+  },
+  async ({ working_directory, package_name, dev }) => {
+    try {
+      const args = ["install", package_name];
+
+      if (dev) {
+        args.push("--save-dev");
+      }
+
+      const result = await new Promise<string>((resolve, reject) => {
+        const process = spawn(
+          "npm.cmd",
+          args,
+          {
+            cwd: working_directory,
+            shell: true,
+            windowsHide: true,
+          }
+        );
+
+        let stdout = "";
+        let stderr = "";
+
+        process.stdout.on("data", (data) => {
+          stdout += data.toString();
+        });
+
+        process.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        process.on("error", reject);
+
+        process.on("close", (code) => {
+          resolve(
+            `Exit code: ${code}\n\nSTDOUT:\n${stdout}\n\nSTDERR:\n${stderr}`
+          );
+        });
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Install error: ${
+              error instanceof Error
+                ? error.message
+                : String(error)
+            }`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+// --------------------------------------------------
+// TOOL 27: Uninstall Package
+// --------------------------------------------------
+
+server.tool(
+  "uninstall_package",
+  "Remove an npm package",
+  {
+    working_directory: z.string(),
+    package_name: z.string(),
+  },
+  async ({ working_directory, package_name }) => {
+    try {
+      const result = await new Promise<string>((resolve, reject) => {
+        const process = spawn(
+          "npm.cmd",
+          ["uninstall", package_name],
+          {
+            cwd: working_directory,
+            shell: true,
+            windowsHide: true,
+          }
+        );
+
+        let stdout = "";
+        let stderr = "";
+
+        process.stdout.on("data", (data) => {
+          stdout += data.toString();
+        });
+
+        process.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        process.on("error", reject);
+
+        process.on("close", (code) => {
+          resolve(
+            `Exit code: ${code}\n\nSTDOUT:\n${stdout}\n\nSTDERR:\n${stderr}`
+          );
+        });
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Uninstall error: ${
+              error instanceof Error
+                ? error.message
+                : String(error)
+            }`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+// --------------------------------------------------
+// TOOL 28: Run Safe Command
+// --------------------------------------------------
+
+server.tool(
+  "run_command_safe",
+  "Run an approved development command",
+  {
+    working_directory: z.string(),
+    command: z.enum([
+      "npm install",
+      "npm update",
+      "npm audit",
+      "npm run",
+      "git status",
+      "git diff",
+      "git log",
+      "git branch",
+    ]),
+  },
+  async ({ working_directory, command }) => {
+    try {
+      const [program, ...args] = command.split(" ");
+
+      const executable =
+        program === "npm" ? "npm.cmd" : program;
+
+      const result = await new Promise<string>((resolve, reject) => {
+        const process = spawn(
+          executable,
+          args,
+          {
+            cwd: working_directory,
+            shell: true,
+            windowsHide: true,
+          }
+        );
+
+        let stdout = "";
+        let stderr = "";
+
+        process.stdout.on("data", (data) => {
+          stdout += data.toString();
+        });
+
+        process.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        process.on("error", reject);
+
+        process.on("close", (code) => {
+          resolve(
+            `Exit code: ${code}\n\nSTDOUT:\n${stdout}\n\nSTDERR:\n${stderr}`
+          );
+        });
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Command error: ${
+              error instanceof Error
+                ? error.message
+                : String(error)
+            }`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+// --------------------------------------------------
+// TOOL 29: NPM Run Script
+// --------------------------------------------------
+
+server.tool(
+  "npm_run_script",
+  "Run a short-lived npm script from package.json",
+  {
+    working_directory: z.string(),
+    script_name: z.string(),
+  },
+  async ({ working_directory, script_name }) => {
+    try {
+      // Block scripts that normally keep running
+      const blockedScripts = [
+        "start",
+        "dev",
+        "serve",
+        "watch",
+        "preview",
+      ];
+
+      if (blockedScripts.includes(script_name)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `Script "${script_name}" is blocked because it may run continuously. ` +
+                `Use run_build or run_tests for short-lived tasks.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const result = await new Promise<string>((resolve, reject) => {
+        const process = spawn(
+          "npm.cmd",
+          ["run", script_name],
+          {
+            cwd: working_directory,
+            shell: true,
+            windowsHide: true,
+          }
+        );
+
+        let stdout = "";
+        let stderr = "";
+
+        process.stdout.on("data", (data) => {
+          stdout += data.toString();
+        });
+
+        process.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        process.on("error", reject);
+
+        process.on("close", (code) => {
+          resolve(
+            `Exit code: ${code}\n\nSTDOUT:\n${stdout}\n\nSTDERR:\n${stderr}`
+          );
+        });
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `NPM script error: ${
+              error instanceof Error
+                ? error.message
+                : String(error)
+            }`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+// --------------------------------------------------
+// TOOL 30: Check Dependencies
+// --------------------------------------------------
+
+server.tool(
+  "check_dependencies",
+  "Check npm dependencies for outdated packages",
+  {
+    working_directory: z.string(),
+  },
+  async ({ working_directory }) => {
+    try {
+      const result = await new Promise<string>((resolve, reject) => {
+        const process = spawn(
+          "npm.cmd",
+          ["outdated"],
+          {
+            cwd: working_directory,
+            shell: true,
+            windowsHide: true,
+          }
+        );
+
+        let stdout = "";
+        let stderr = "";
+
+        process.stdout.on("data", (data) => {
+          stdout += data.toString();
+        });
+
+        process.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        process.on("error", reject);
+
+        process.on("close", (code) => {
+          resolve(
+            `Exit code: ${code}\n\nSTDOUT:\n${stdout}\n\nSTDERR:\n${stderr}`
+          );
+        });
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Dependency check error: ${
+              error instanceof Error
+                ? error.message
+                : String(error)
+            }`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+);
+// --------------------------------------------------
 // START SERVER
 // --------------------------------------------------
 
